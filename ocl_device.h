@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <CL/cl.h>        
 
+#include "ocl_error.h"
 
 namespace ocl {
 
@@ -83,26 +84,28 @@ ostream& operator<<(ostream& str, const device_description& dd) {
 template<typename T>
 T get_device_data(cl_device_id id, cl_device_info param) {
     T v = 0;
-    auto res = clGetDeviceInfo(id, param, sizeof(v), &v, 0);
-    if (res != CL_SUCCESS)
-        throw res;
+    auto ret = clGetDeviceInfo(id, param, sizeof(v), &v, 0);
+    if (ret != CL_SUCCESS)
+        throw clexception("clGetDeviceInfo", ret);
     return v;
 }
 
 template<>
 string get_device_data<string>(cl_device_id id, cl_device_info param) {
     size_t sz = 0;
-    auto res = clGetDeviceInfo(id, param, 0, 0, &sz);
-    if (res != CL_SUCCESS)
-        throw res;
+    auto ret = clGetDeviceInfo(id, param, 0, 0, &sz);
+    if (ret != CL_SUCCESS)
+        throw clexception("clGetDeviceInfo", ret);
 
     string v;
     v.resize(sz);
-    res = clGetDeviceInfo(id, param, sz, &v[0], 0);
+    ret = clGetDeviceInfo(id, param, sz, &v[0], 0);
 
-    if (res != CL_SUCCESS)
-        throw res;
+    if (ret != CL_SUCCESS)
+        throw clexception("clGetDeviceInfo", ret);
 
+    while (v.size() && v.back() == 0)
+        v.pop_back();
     return v;
 }
 
@@ -138,9 +141,9 @@ auto get_devices(cl_platform_id pid) {
 
 auto get_devices() {
     cl_uint count;     
-    cl_int ret = clGetPlatformIDs(0, NULL, &count);
+    auto ret = clGetPlatformIDs(0, NULL, &count);
     if (ret != CL_SUCCESS)
-        throw std::runtime_error("can not initialize OpenCL");
+        throw clexception("clGetPlatformIDs", ret);
 
     vector<cl_platform_id> platforms(count);
     clGetPlatformIDs(count, &platforms[0], NULL);

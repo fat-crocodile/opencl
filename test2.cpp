@@ -79,7 +79,7 @@ Matrix transpose_multiplication(const Matrix& m1, const Matrix& m2) {
 }
 
 
-auto ocl_simple_multiplication(cl_device_id did, const Matrix& m1, const Matrix& m2t, const char* kernel_code) {
+auto ocl_simple_multiplication(cl_device_id did, const Matrix& m1, const Matrix& m2t, const char* kernel_code, int ws) {
     Matrix res(m1.size());
     timer t;
 
@@ -124,7 +124,7 @@ auto ocl_simple_multiplication(cl_device_id did, const Matrix& m1, const Matrix&
 
         queue.finish();
         t.start();
-        queue.run(k.k, rows, cols, 8, 8);
+        queue.run(k.k, rows, cols, ws, ws);
         queue.finish();
         t.stop();
 
@@ -135,7 +135,7 @@ auto ocl_simple_multiplication(cl_device_id did, const Matrix& m1, const Matrix&
         queue.finish();
     }
     catch (clexception& e) {
-        cout << "exception! " << e.f << " " << e.ret << endl;
+        cout << "exception! " << e.what() << endl;
         throw;
     }
 
@@ -203,13 +203,46 @@ int main(int argc, char* argv[])
 
     {
         timer t;
-        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t);
+        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 1);
+        auto tms = t.get_ms();
+        res = std::move(m);
+        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
+    }
+
+    {
+        timer t;
+        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 2);
+        auto tms = t.get_ms();
+        res = std::move(m);
+        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
+    }
+
+    {
+        timer t;
+        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 4);
+        auto tms = t.get_ms();
+        res = std::move(m);
+        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
+    }
+
+    {
+        timer t;
+        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 8);
+        auto tms = t.get_ms();
+        res = std::move(m);
+        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
+    }
+
+    {
+        timer t;
+        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 16);
         auto tms = t.get_ms();
         res = std::move(m);
         cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
     }
 
 
+/*
     if (a <= cpu_max) {
         Matrix res_ref;
         timer t;
@@ -221,5 +254,5 @@ int main(int argc, char* argv[])
         else
             cout << "res_ref != res_ocl, max diff = " << maxdiff(res_ref, res) << endl;
     }
+}*/
 }
-

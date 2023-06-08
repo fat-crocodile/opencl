@@ -5,18 +5,12 @@
 #include <sstream>
 #include <CL/cl.h>        
 
+#include "ocl_error.h"
 
 namespace ocl {
 
 using std::strlen, std::string;
 using std::vector;
-
-struct clexception : std::exception {
-    string f;
-    cl_int ret;
-
-    clexception(const string& f, cl_int ret) : f(f), ret(ret) {}
-};
 
 
 struct context {
@@ -63,13 +57,13 @@ struct context {
      
         ret = clBuildProgram(program, 1, &did, options, NULL, NULL); 
         if (ret != CL_SUCCESS) {
-            std::stringstream message;
-            message << "clBuildProgram returns " << ret << "\n";
-            message << "clGetProgramBuildInfo:\n"; 
-            message << "status:  " << getProgramBuildInfo(program, did, CL_PROGRAM_BUILD_STATUS) << "\n";
-            message << "options: " << getProgramBuildInfo(program, did, CL_PROGRAM_BUILD_OPTIONS) << "\n";
-            message << "log:\n" << getProgramBuildInfo(program, did, CL_PROGRAM_BUILD_LOG) << "\n";
-            throw clexception(message.str(), ret);
+            clexception e(ret);
+            e << "clBuildProgram returns " << ocl::error2text(ret) << " (" << ret << ")\n";
+            e << "clGetProgramBuildInfo:\n"; 
+            e << "status:  " << getProgramBuildInfo(program, did, CL_PROGRAM_BUILD_STATUS) << "\n";
+            e << "options: " << getProgramBuildInfo(program, did, CL_PROGRAM_BUILD_OPTIONS) << "\n";
+            e << "log:\n" << getProgramBuildInfo(program, did, CL_PROGRAM_BUILD_LOG) << "\n";
+            throw e;
         }
 
         return program;
@@ -102,7 +96,8 @@ struct context {
         ret = clGetProgramBuildInfo(program, did, param, sz, &res[0], &sz);        
         if (ret != CL_SUCCESS)
             throw clexception("clGetProgramBuildInfo", ret);
-
+        while (res.size() && res.back() == 0)
+            res.pop_back();
         return res;
     }
 };
