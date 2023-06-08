@@ -150,8 +150,6 @@ namespace ocl {
         e.copy = e.text.str();
         return e;
     }
-
- 
 }
 
 
