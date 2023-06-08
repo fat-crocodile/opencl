@@ -37,7 +37,7 @@ struct context {
         return res;
     }
 
-    auto create_queue() {
+    cl_command_queue create_queue() {
         cl_int ret = 0;
         cl_command_queue queue = clCreateCommandQueue(ctx, did, 0, &ret);
         if (ret != CL_SUCCESS)
@@ -117,53 +117,55 @@ struct command_queue {
 
     template<typename T>
     size_t write_buffer(cl_mem m, const vector<T>& v) {
-        cl_int ret = 0;
-        ret = clEnqueueWriteBuffer(q, m, CL_TRUE, 0, v.size() * sizeof(T), &v[0], 0, NULL, NULL);
-        if (ret != CL_SUCCESS)
-            throw clexception("clEnqueueWriteBuffer", ret);
-
-        return v.size() * sizeof(T);
+        return write_buffer(m, 0, &v[0], v.size() * sizeof(T), false);
     }
 
     template<typename T>
     size_t write_buffer_async(cl_mem m, size_t offset, const vector<T>& v) {
+        return write_buffer(m, offset, &v[0], v.size() * sizeof(T), true);
+    }
+
+    size_t write_buffer(cl_mem m, size_t offset, const void* data, size_t sz, bool sync) {
         cl_int ret = 0;
-        ret = clEnqueueWriteBuffer(q, m, CL_FALSE, offset, v.size() * sizeof(T), &v[0], 0, NULL, NULL);
+        ret = clEnqueueWriteBuffer(q, m, sync ? CL_TRUE : CL_FALSE, offset, sz, data, 0, NULL, NULL);
         if (ret != CL_SUCCESS)
             throw clexception("clEnqueueWriteBuffer", ret);
-        return v.size() * sizeof(T);
+        return sz;
     }
 
-    void run(cl_kernel kernel, size_t range, size_t ws) {
-        cl_int ret = clEnqueueNDRangeKernel(q, kernel, 1, NULL, &range, &ws, 0, NULL, NULL);
-        if (ret != CL_SUCCESS)
-            throw clexception("clEnqueueNDRangeKernel", ret);            
+
+    void run1d(cl_kernel kernel, size_t range, size_t ws = 0) {
+        run(kernel, 1, &range, (ws != 0) ? &ws : NULL);
     }
 
-    void run(cl_kernel kernel, size_t range1, size_t range2, size_t ws1, size_t ws2) {
+    void run2d(cl_kernel kernel, size_t range1, size_t range2, size_t ws1 = 0, size_t ws2 = 0) {
         size_t ranges[] = {range1, range2};
         size_t wss[] = {ws1, ws2};
-        cl_int ret = clEnqueueNDRangeKernel(q, kernel, 2, NULL, ranges, wss, 0, NULL, NULL);
+        run(kernel, 2, ranges, (ws1 != 0) ? wss : NULL);
+    }
+
+    void run(cl_kernel kernel, size_t ndims, size_t* range, size_t* ws) {
+        cl_int ret = clEnqueueNDRangeKernel(q, kernel, ndims, NULL, range, ws, 0, NULL, NULL);
         if (ret != CL_SUCCESS)
             throw clexception("clEnqueueNDRangeKernel", ret);            
     }
+
 
     template<typename T>
     void read_buffer(cl_mem m, vector<T>* p) {
-        cl_int ret = clEnqueueReadBuffer(q, m, CL_TRUE, 0,  	
-                                  p->size() * sizeof(T), &((*p)[0]), 0, NULL, NULL);
-        if (ret != CL_SUCCESS)
-            throw clexception("clEnqueueReadBuffer", ret);
-
+        read_buffer(m, 0, &((*p)[0]), p->size() * sizeof(T));
     } 
 
     template<typename T>
     size_t read_buffer_async(cl_mem m, size_t offset, vector<T>* p) {
-        cl_int ret = clEnqueueReadBuffer(q, m, CL_FALSE, offset,
-                                  p->size() * sizeof(T), &((*p)[0]), 0, NULL, NULL);
+        return read_buffer(m, offset, &((*p)[0]), p->size() * sizeof(T), false);
+    } 
+
+    size_t read_buffer(cl_mem m, size_t offset, void* p, size_t sz, bool sync=true) {
+        cl_int ret = clEnqueueReadBuffer(q, m, sync ? CL_TRUE : CL_FALSE, offset, sz, p, 0, NULL, NULL);
         if (ret != CL_SUCCESS)
             throw clexception("clEnqueueReadBuffer", ret);
-        return p->size() * sizeof(T);
+        return sz;
     } 
 };
 

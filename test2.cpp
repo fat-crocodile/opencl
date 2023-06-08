@@ -124,7 +124,7 @@ auto ocl_simple_multiplication(cl_device_id did, const Matrix& m1, const Matrix&
 
         queue.finish();
         t.start();
-        queue.run(k.k, rows, cols, ws, ws);
+        queue.run2d(k.k, rows, cols, ws, ws);
         queue.finish();
         t.stop();
 
@@ -201,48 +201,16 @@ int main(int argc, char* argv[])
 
     Matrix res;
 
+    for (auto ws : {1, 2, 4, 8, 16})
     {
         timer t;
-        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 1);
+        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, ws);
         auto tms = t.get_ms();
         res = std::move(m);
-        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
-    }
-
-    {
-        timer t;
-        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 2);
-        auto tms = t.get_ms();
-        res = std::move(m);
-        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
-    }
-
-    {
-        timer t;
-        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 4);
-        auto tms = t.get_ms();
-        res = std::move(m);
-        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
-    }
-
-    {
-        timer t;
-        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 8);
-        auto tms = t.get_ms();
-        res = std::move(m);
-        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
-    }
-
-    {
-        timer t;
-        auto [m, it] = ocl_simple_multiplication(devices[0].id, m1, m2t, kernel_two_dims_t, 16);
-        auto tms = t.get_ms();
-        res = std::move(m);
-        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time\n";        
+        cout << "OCL: " << it << "ms kernel time; " << tms << " ms whole time (ws=" << ws << ")\n"; 
     }
 
 
-/*
     if (a <= cpu_max) {
         Matrix res_ref;
         timer t;
@@ -254,5 +222,4 @@ int main(int argc, char* argv[])
         else
             cout << "res_ref != res_ocl, max diff = " << maxdiff(res_ref, res) << endl;
     }
-}*/
 }
